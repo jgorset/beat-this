@@ -1,0 +1,27 @@
+{
+  "upstream": "https://github.com/CPJKU/beat_this",
+  "packageVersion": "1.1.0",
+  "checkpoint": "final0",
+  "model": {
+    "file": "beat-this.onnx",
+    "bytes": 83008106,
+    "sha256": "5d8a94ce99fb33a6b26df6f6d8076decd52b8fd9439e3206d9b8bcdb1c2881bd",
+    "opset": 17,
+    "input": "spect",
+    "outputs": [
+      "beat",
+      "downbeat"
+    ]
+  },
+  "export": {
+    "torch": "2.6.0",
+    "onnx": "1.17.0"
+  },
+  "preprocessing": {
+    "sampleRate": 22050,
+    "hopSize": 441,
+    "fftSize": 1024,
+    "bands": 128,
+    "sha256": "838cfb27d3f4c32fbb03f11dfada2d1e9c0897cac36ca6d46e83f7b0e8dad69e"
+  }
+}

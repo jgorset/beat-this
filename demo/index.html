@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Beat This!</title>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@5.7.47/daisyui.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-base-100 text-base-content">
+  <main class="max-w-2xl mx-auto p-8 space-y-6">
+    <h1 class="text-4xl font-bold">Beat This!</h1>
+    <p>Choose a song. Find its beats. Keep the audio on your machine.</p>
+    <label class="block" for="audio">Audio file</label>
+    <input id="audio" class="file-input w-full" type="file" accept="audio/*">
+    <label class="block" for="provider">Run on</label>
+    <select id="provider" class="select">
+      <option value="webgpu">GPU (WebGPU)</option>
+      <option value="wasm">CPU (WebAssembly)</option>
+    </select>
+    <div class="flex gap-3">
+      <button id="analyze" class="btn btn-primary" disabled>Find beats</button>
+      <button id="cancel" class="btn" disabled>Cancel</button>
+    </div>
+    <p id="status" role="status" aria-live="polite">Choose an audio file to start.</p>
+    <pre id="result" class="overflow-auto max-h-96 text-sm whitespace-pre-wrap"></pre>
+    <p><a class="link" href="https://github.com/jgorset/beat-this">Source and documentation</a></p>
+  </main>
+  <script type="module" src="/main.ts"></script>
+</body>
+</html>

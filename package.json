@@ -1,0 +1,24 @@
+{
+  "name": "@jgorset/beat-this",
+  "version": "1.0.0",
+  "description": "Beat This! beat and downbeat tracking in the browser.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Johannes Gorset",
+  "repository": { "type": "git", "url": "https://github.com/jgorset/beat-this.git" },
+  "bugs": { "url": "https://github.com/jgorset/beat-this/issues" },
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "files": ["dist", "LICENSE", "THIRD_PARTY_NOTICES.md", "model.json"],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsc",
+    "test": "npm run build && node --test test/*.test.ts",
+    "demo": "vite demo --config demo/vite.config.ts --host 127.0.0.1",
+    "demo:build": "vite build demo --config demo/vite.config.ts --outDir ../.tmp/demo",
+    "prepack": "npm run build"
+  },
+  "dependencies": { "fft.js": "4.0.4", "onnxruntime-web": "1.23.2" },
+  "devDependencies": { "typescript": "5.9.3", "vite": "6.4.3" },
+  "engines": { "node": ">=22" },
+  "keywords": ["beat-this", "beat-tracking", "downbeat", "audio", "onnx", "webgpu", "wasm"]
+}
