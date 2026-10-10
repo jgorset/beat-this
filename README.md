@@ -10,7 +10,7 @@ with ONNX Runtime Web, including preprocessing and postprocessing.
 ## Installation
 
 ```sh
-npm install https://github.com/jgorset/beat-this/releases/download/v1.0.0/jgorset-beat-this-1.0.0.tgz
+npm install @jgorset/beat-this
 ```
 
 Download [the model](https://github.com/jgorset/beat-this/releases/download/v1.0.0/beat-this.onnx)
