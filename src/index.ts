@@ -1,9 +1,11 @@
 import * as ort from 'onnxruntime-web/webgpu';
-import { extractFeatures, HOP_SIZE, SAMPLE_RATE } from './dsp.js';
+import { BANDS, extractFeatures, HOP_SIZE, SAMPLE_RATE } from './dsp.js';
 import { inferBeatThis, type Progress } from './inference.js';
+import { inferSongs, type SongOptions } from './songs.js';
 
 export { extractFeatures, peakTimes, postprocess, HOP_SIZE, SAMPLE_RATE } from './dsp.js';
 export { inferBeatThis, type Progress, type FeatureWindow } from './inference.js';
+export { inferSongs, type SongOptions } from './songs.js';
 
 export type AudioSource = {
     /** Number of mono samples at 22,050 Hz. */
@@ -17,8 +19,15 @@ export type BeatThisResult = {
     /** Per-frame probabilities, starting at zero and spaced 20 ms apart. */
     beatConfidence: number[];
     downbeatConfidence: number[];
+    /** Where one song ends and the next begins, in seconds. Empty unless `songs` is set. */
+    changes: number[];
 };
-export type AnalyzeOptions = { onProgress?: Progress; signal?: AbortSignal };
+export type AnalyzeOptions = {
+    onProgress?: Progress;
+    signal?: AbortSignal;
+    /** The audio holds several songs: find the changes, and track and count bars per song. Slower, and keeps the features in memory. */
+    songs?: boolean | SongOptions;
+};
 export type BeatThis = {
     analyze: (audio: Float32Array | AudioSource, options?: AnalyzeOptions) => Promise<BeatThisResult>;
     dispose: () => Promise<void>;
@@ -41,7 +50,7 @@ export async function createBeatThis(options: {
     });
     let busy = false, disposed = false;
     return {
-        async analyze(audio, { onProgress, signal } = {}) {
+        async analyze(audio, { onProgress, signal, songs } = {}) {
             if (disposed) throw new Error('This tracker has been disposed.');
             if (busy) throw new Error('This tracker is already analyzing audio.');
             signal?.throwIfAborted();
@@ -53,7 +62,7 @@ export async function createBeatThis(options: {
             busy = true;
             try {
                 const frames = Math.floor(source.sampleCount / HOP_SIZE) + 1;
-                const result = await inferBeatThis(session, frames, async (first, count) => {
+                const features = async (first: number, count: number) => {
                     signal?.throwIfAborted();
                     const begin = Math.max(0, first * HOP_SIZE - 1024);
                     const end = Math.min(source.sampleCount, (first + count) * HOP_SIZE + 1024);
@@ -61,7 +70,17 @@ export async function createBeatThis(options: {
                     signal?.throwIfAborted();
                     if (!(pcm instanceof Float32Array) || pcm.length !== end - begin) throw new TypeError('Invalid audio window.');
                     return extractFeatures(pcm, first, count, source.sampleCount, begin);
-                }, onProgress, signal);
+                };
+                let result: { scores: Float32Array; beats: number[]; downbeats: number[]; changes?: number[] };
+                if (songs) {
+                    // Finding the songs takes several looks at the same audio, so keep its features.
+                    const mel = new Float32Array(frames * BANDS);
+                    for (let first = 0; first < frames; first += 1500) {
+                        onProgress?.('Reading audio', first, frames);
+                        mel.set(await features(first, Math.min(1500, frames - first)), first * BANDS);
+                    }
+                    result = await inferSongs(session, mel, onProgress, signal, songs === true ? {} : songs);
+                } else result = await inferBeatThis(session, frames, features, onProgress, signal);
                 const beatConfidence: number[] = [], downbeatConfidence: number[] = [];
                 for (let i = 0; i < frames; i++) {
                     beatConfidence[i] = 1 / (1 + Math.exp(-result.scores[2 * i]));
@@ -69,7 +88,7 @@ export async function createBeatThis(options: {
                 }
                 const duration = source.sampleCount / SAMPLE_RATE;
                 return { beats: result.beats.filter(time => time < duration), downbeats: result.downbeats.filter(time => time < duration),
-                    beatConfidence, downbeatConfidence };
+                    beatConfidence, downbeatConfidence, changes: result.changes ?? [] };
             } finally { busy = false; }
         },
         async dispose() {

@@ -2,10 +2,11 @@ const file = document.querySelector<HTMLInputElement>('#audio')!;
 const analyze = document.querySelector<HTMLButtonElement>('#analyze')!;
 const cancel = document.querySelector<HTMLButtonElement>('#cancel')!;
 const provider = document.querySelector<HTMLSelectElement>('#provider')!;
+const songs = document.querySelector<HTMLInputElement>('#songs')!;
 const status = document.querySelector<HTMLParagraphElement>('#status')!;
 const output = document.querySelector<HTMLPreElement>('#result')!;
 let worker: Worker | undefined, generation = 0, running = false;
-const controls = () => { file.disabled = running; provider.disabled = running; analyze.disabled = running || !file.files?.length; cancel.disabled = !running; };
+const controls = () => { file.disabled = running; provider.disabled = running; songs.disabled = running; analyze.disabled = running || !file.files?.length; cancel.disabled = !running; };
 const finish = () => { worker?.terminate(); worker = undefined; running = false; controls(); };
 file.onchange = () => { controls(); output.textContent = ''; };
 cancel.onclick = () => { generation++; finish(); status.textContent = 'Cancelled.'; };
@@ -32,13 +33,15 @@ analyze.onclick = async () => {
             if (data.progress) status.textContent = data.progress;
             else if (data.error) { status.textContent = data.error; finish(); }
             else if (data.result) {
-                status.textContent = `Found ${data.result.beats.length} beats and ${data.result.downbeats.length} downbeats.`;
-                output.textContent = JSON.stringify({beats:data.result.beats,downbeats:data.result.downbeats},null,2);
+                const {beats,downbeats,changes} = data.result;
+                status.textContent = `Found ${beats.length} beats and ${downbeats.length} downbeats`
+                    + (songs.checked ? ` in ${changes.length + 1} ${changes.length ? 'songs' : 'song'}.` : '.');
+                output.textContent = JSON.stringify(songs.checked ? {beats,downbeats,changes} : {beats,downbeats},null,2);
                 finish();
             }
         };
         worker.onerror = () => { status.textContent = 'The audio worker failed.'; finish(); };
-        worker.postMessage({pcm,executionProvider:provider.value},[pcm.buffer]);
+        worker.postMessage({pcm,executionProvider:provider.value,songs:songs.checked},[pcm.buffer]);
     } catch(error) {
         if (current === generation) { status.textContent = error instanceof Error ? error.message : 'Analysis failed.'; finish(); }
     } finally { await context?.close(); }

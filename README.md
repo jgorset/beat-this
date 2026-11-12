@@ -69,6 +69,31 @@ Cancellation takes effect between windows and after an in-flight inference
 finishes. To stop immediately, terminate the worker. Wait for analysis to settle
 before disposing the tracker, and run one analysis at a time per tracker.
 
+### Several songs
+
+A mix, a playlist or a DJ set holds many songs, and Beat This! listens to 30 seconds
+at a time. A window that spans two songs gets confused about both, and nothing keeps
+the bars of one window in step with the next. Ask for songs and each one is tracked
+by itself:
+
+```ts
+const { beats, downbeats, changes } = await tracker.analyze(audio, { songs: true });
+
+console.log(changes); // Where one song ends and the next begins, in seconds.
+```
+
+The tracker runs overlapping windows so every moment is heard with context on both
+sides, finds the song changes, runs each song again on its own, fills holes in the
+beats, and counts the bars steadily within each song. That's about four times the
+inference, and the features stay in memory (about 1.5 MB per minute of audio), so
+leave it off for single songs.
+
+On mixes of GTZAN songs with known beats, the bars come out right in 64% of the
+songs instead of 55%, and beats in the first eight seconds after a change score
+86 F instead of 82. It finds 84% of the song changes, and 85% of the changes it
+reports are real. Songs shorter than 30 seconds are merged with their neighbours
+unless you say otherwise: `{ songs: { minSong: 12 } }`.
+
 ### WebGPU and WebAssembly
 
 WebGPU is the default. Use HTTPS or localhost and a browser with WebGPU support.
@@ -87,6 +112,7 @@ JavaScript environment.
 Already decoding audio or running ONNX sessions? `extractFeatures` produces the
 reference 128-band log-mel features, `inferBeatThis` runs overlapping windows on
 an existing session, and `postprocess` converts beat/downbeat logits to seconds.
+`inferSongs` tracks several songs from features you already have.
 Their TypeScript declarations describe the inputs.
 
 ## Demo
@@ -109,6 +135,11 @@ isn't uploaded.
 The release includes an ONNX export of the original `final0` weights, with
 dynamic time dimensions, 1,500-frame windows, six-frame borders, and the upstream
 `keep_first` aggregation and minimal postprocessor. Model weights are unchanged.
+
+Song changes are found by a small model of gradient-boosted trees
+(`src/changes.json`) that compares the sound, the loudness and the beat just before
+and just after every half second. It was trained on mixes of GTZAN excerpts with
+known boundaries.
 
 Different inference backends and resamplers can produce slightly different
 timestamps near peak boundaries. That also happens between upstream CPU and GPU
